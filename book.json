@@ -1,0 +1,150 @@
+{
+  "root": "book/",
+  "plugins": [
+    "markdown-parse-add-br",
+    "table-cell-merge",
+    "prism-ext",
+    "-highlight",
+    "versions-select",
+    "chapter-numbering",
+    "copy-code-button",
+    "katex",
+    "ace",
+    "get-pdf-link",
+    "mermaid",
+    "uml",
+    "sequence",
+    "flexible-alerts",
+    "alerts",
+    "anchors",
+    "-sharing",
+    "-lunr",
+    "-search",
+    "search-pro-kui",
+    "back-to-top-button",
+    "hide-published-with",
+    "footnote-string-to-number",
+    "styles-sass-fix",
+    "flowchart-full",
+    "fontsettings",
+    "folding-menu",
+    "todo",
+    "image-captions",
+    "advanced-emoji",
+    "disqus",
+    "mermaid-gb3",
+    "intopic-toc",
+    "theme-api"
+  ],
+  "language": "ja",
+  "pluginsConfig": {
+    "customJquery": {
+      "js": "js/custom.js"
+    },
+    "folding-menu": {
+      "animationDuration": 200
+    },
+    "theme-api": {
+      "theme": "light"
+    },
+    "uml": {
+      "format": "svg",
+      "charset": "UTF-8",
+      "nailgun": false
+    },
+    "image-captions": {
+      "caption": "Image - _CAPTION_"
+    },
+    "disqus": {
+      "shortName": "sample-site-5"
+    },
+    "theme-default": {
+      "showLevel": false
+		},
+    "intopic-toc": {
+      "selector": ".markdown-section h2",
+      "visible": true,
+      "label": "ナビゲーション"
+    },
+    "fontsettings": {
+      "fontsettings": {
+        "theme": "white", 
+        "family": "sans",
+        "fontSize": 4
+      }
+    },
+		"anchor-navigation-ex": {
+			"isRewritePageTitle": true,
+			"isShowTocTitleIcon": true,
+			"tocLevel1Icon": "fa fa-hand-o-right",
+			"tocLevel2Icon": "fa fa-hand-o-right",
+			"tocLevel3Icon": "fa fa-hand-o-right"
+		},
+    "versions": {
+      "options": [
+        {
+          "value": "https://hs-yonekura.github.io/denso/",
+          "text": "PWH Handler"
+        },
+        {
+          "value": "https://hs-yonekura.github.io/denso/sample1.html",
+          "text": "評価用サンプル１"
+        },
+        {
+          "value": "https://hs-yonekura.github.io/denso/sample2.html",
+          "text": "評価用サンプル２"
+        }
+      ]
+    },
+    "auto-summary": {
+    },
+    "flexible-alerts": {
+      "style": "flat",
+      "note": {
+        "label": "メモ"
+      },
+      "tip": {
+        "label": "ヒント"
+      },
+      "warning": {
+        "label": "注意"
+      },
+      "danger": {
+        "label": "警告"
+      }
+    },
+    "prism": {
+      "theme": "prismjs/themes/prism-okaidia.css",
+      "plugins": ["line-numbers", "copy-to-clipboard", "show-language"],
+      "cssClasses": "line-numbers",
+      "ignore" : ["mermaid", "flow", "puml"]
+    },
+		"include-codeblock": {
+			"template": "ace",
+			"unindent": true,
+			"theme": "monokai"
+		},
+    "get-pdf-link": {
+      "base": "https://hs-yonekura.github.io/denso/pdf/book.pdf",
+      "label": "PDFダウンロード",
+      "multilingual": false
+    }
+  },
+  "pdf": {
+    "fontFamily": "IPAGothic",
+    "pageNumbers": false,
+    "fontSize": 14,
+    "paperSize": "a4",
+    "margin": {
+      "right": 62,
+      "left": 62,
+      "top": 36,
+      "bottom": 36
+    }
+  },
+  "styles": {
+    "website": "../styles/site.scss",
+    "pdf": "../styles/pdf.scss"
+  }
+}
+
