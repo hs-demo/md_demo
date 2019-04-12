@@ -1,0 +1,16 @@
+@import url("https://fonts.googleapis.com/css?family=Pacifico|Roboto");
+.book .book-body {
+  font-family: "Roboto"; }
+  .book .book-body .page-wrapper .page-inner section.normal h1 {
+    font-size: 200px; }
+
+.page .section > p {
+  text-indent: 1em; }
+
+.pdf-footer {
+  border-top: 1px solid #666;
+  color: #333; }
+
+.pdf-header {
+  border-bottom: 1px solid #666;
+  color: #333; }

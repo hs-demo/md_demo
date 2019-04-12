@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Norwegian Bokmål [nb]
+//! locale : norwegian bokmål (nb)
 //! authors : Espen Hovlandsdal : https://github.com/rexxars
 //!           Sigurd Gartmann : https://github.com/sigurdga
 
@@ -33,7 +33,6 @@ export default moment.defineLocale('nb', {
         future : 'om %s',
         past : '%s siden',
         s : 'noen sekunder',
-        ss : '%d sekunder',
         m : 'ett minutt',
         mm : '%d minutter',
         h : 'en time',
@@ -45,7 +44,7 @@ export default moment.defineLocale('nb', {
         y : 'ett år',
         yy : '%d år'
     },
-    dayOfMonthOrdinalParse: /\d{1,2}\./,
+    ordinalParse: /\d{1,2}\./,
     ordinal : '%d.',
     week : {
         dow : 1, // Monday is the first day of the week.

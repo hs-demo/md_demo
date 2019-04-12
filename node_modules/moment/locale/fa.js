@@ -1,11 +1,13 @@
 //! moment.js locale configuration
+//! locale : Persian (fa)
+//! author : Ebrahim Byagowi : https://github.com/ebraminio
 
 ;(function (global, factory) {
    typeof exports === 'object' && typeof module !== 'undefined'
        && typeof require === 'function' ? factory(require('../moment')) :
-   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
+   typeof define === 'function' && define.amd ? define(['moment'], factory) :
    factory(global.moment)
-}(this, (function (moment) { 'use strict';
+}(this, function (moment) { 'use strict';
 
 
     var symbolMap = {
@@ -69,8 +71,7 @@
         relativeTime : {
             future : 'در %s',
             past : '%s پیش',
-            s : 'چند ثانیه',
-            ss : 'ثانیه d%',
+            s : 'چندین ثانیه',
             m : 'یک دقیقه',
             mm : '%d دقیقه',
             h : 'یک ساعت',
@@ -92,14 +93,14 @@
                 return symbolMap[match];
             }).replace(/,/g, '،');
         },
-        dayOfMonthOrdinalParse: /\d{1,2}م/,
+        ordinalParse: /\d{1,2}م/,
         ordinal : '%dم',
         week : {
             dow : 6, // Saturday is the first day of the week.
-            doy : 12 // The week that contains Jan 12th is the first week of the year.
+            doy : 12 // The week that contains Jan 1st is the first week of the year.
         }
     });
 
     return fa;
 
-})));
+}));

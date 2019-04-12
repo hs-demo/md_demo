@@ -1,11 +1,13 @@
 //! moment.js locale configuration
+//! locale : euskara (eu)
+//! author : Eneko Illarramendi : https://github.com/eillarra
 
 ;(function (global, factory) {
    typeof exports === 'object' && typeof module !== 'undefined'
        && typeof require === 'function' ? factory(require('../moment')) :
-   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
+   typeof define === 'function' && define.amd ? define(['moment'], factory) :
    factory(global.moment)
-}(this, (function (moment) { 'use strict';
+}(this, function (moment) { 'use strict';
 
 
     var eu = moment.defineLocale('eu', {
@@ -40,7 +42,6 @@
             future : '%s barru',
             past : 'duela %s',
             s : 'segundo batzuk',
-            ss : '%d segundo',
             m : 'minutu bat',
             mm : '%d minutu',
             h : 'ordu bat',
@@ -52,14 +53,14 @@
             y : 'urte bat',
             yy : '%d urte'
         },
-        dayOfMonthOrdinalParse: /\d{1,2}\./,
+        ordinalParse: /\d{1,2}\./,
         ordinal : '%d.',
         week : {
             dow : 1, // Monday is the first day of the week.
-            doy : 7  // The week that contains Jan 7th is the first week of the year.
+            doy : 7  // The week that contains Jan 1st is the first week of the year.
         }
     });
 
     return eu;
 
-})));
+}));

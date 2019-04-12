@@ -1,0 +1,878 @@
+#!/bin/sh -e
+
+# Copyright (C) 2011-2019 Duinsoft Packages <pkg@duinsoft.nl>
+#
+# This program is free software. You can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the Free
+# Software Foundation, either version 2 of the License or - at your option -
+# any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY, without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this package. If not, see http://www.gnu.org/licenses/.
+#
+# On Debian systems the full text of the GNU General Public License version 2
+# can be found in the file /usr/share/common-licenses/GPL-2.
+
+ScriptName=update-sun-jre
+ScriptVersion=2.0.4
+ScriptDate=2019-01-16
+
+ScriptCode=usj-app.duinsoft.nl
+ScriptURL=http://duinsoft.nl/packages.php
+
+TempDir=/tmp/$ScriptName
+InfoPage=$TempDir/infopage
+CacheDir=/var/cache/$ScriptName
+DataDir=/usr/share/$ScriptName
+TempData=$DataDir
+JavaDir=/opt/java
+EtcDir=/etc/java-sun
+EtcDirOld=/etc/java-6-sun
+InfoURL=http://java.com/en/download/linux_manual.jsp
+Tarball=$ScriptName-support.tar.gz
+RewriteData=0
+SunPackage=sun-java6
+PluginLeaf=libnpjp2.so
+Depends='binfmt-support libc6 libasound2 libx11-6 libxext6 libxi6 libxtst6 locales unixodbc wget'
+JavaTools='ControlPanel java javaws java_vm jcontrol jjs keytool pack200 policytool rmid rmiregistry unpack200 orbd servertool tnameserv'
+BrowserDirs='firefox iceape iceweasel mozilla midbrowser xulrunner xulrunner-addons'
+Properties='fontconfig swing calendars content-types flavormap logging net sound'
+Security='cacerts java.policy java.security'
+SupportItems="
+/usr/lib/mime/packages/{{ITEM}}-bin
+/usr/share/application-registry/{{ITEM}}-archive.applications
+/usr/share/application-registry/{{ITEM}}-web-start.applications
+/usr/share/applications/{{ITEM}}-controlpanel.desktop
+/usr/share/applications/{{ITEM}}-java.desktop
+/usr/share/applications/{{ITEM}}-javaws.desktop
+/usr/share/applications/{{ITEM}}-policytool.desktop
+/usr/share/menu/{{ITEM}}-bin
+/usr/share/mime/packages/{{ITEM}}-jre.xml
+/usr/share/mime-info/{{ITEM}}-archive.keys
+/usr/share/mime-info/{{ITEM}}-archive.mime
+/usr/share/mime-info/{{ITEM}}-web-start.keys
+/usr/share/mime-info/{{ITEM}}-web-start.mime
+"
+Priority=2000 # OpenJDK is 1061 so this should suffice
+
+# define the default texts in case the localized ones are not available
+Syntax="$ScriptName $ScriptVersion - $ScriptDate - this script must run as root
+
+Usage: $ScriptName [OPTION]... COMMAND
+
+Install, upgrade or remove the Oracle (Sun) Java Runtime Environment from
+www.java.com.
+
+Options:
+  -a          force installation of a 32 bit runtime on a 64 bit system (will
+              also work the other way around but for downloading only!)
+  -c          clean up other installations (in $JavaDir) during installation
+  -f          shorten timeouts on wget actions
+  -h, --help  display this text and exit
+  -i          force installation of the runtime even if not strictly necessary
+  -r          reload the info page whether it has been cached or not
+  -v          be verbose
+
+The unpack messages of the package will never be echoed on screen.
+If you have used -7 to go back to Java 7 and want to use Java 8 again, make sure
+to run the script with the -c and -r options!
+
+Commands:
+  install     download the package from www.java.com and install it
+  remove      remove the package (only after manual installation)
+
+There are more commands, but they are meant for use in dpkg's postinst and
+prerm scripts and should never be used outside that environment. See the
+documentation for details."
+AlienArch="Package for other architecture\n"
+AptGetInstall="Installing missing packages . . .\n"
+BadArgument='unknown argument'
+BinaryFailed='failed to download package'
+Cached=' - cached'
+CheckBundle="BundleIds: %s (from info page) =?= %s (from cache)\n"
+CheckCache="Checking cache . . .\n"
+CheckDepends="Checking dependencies . . .\n"
+CheckPlugin="Checking plugin . . .\n"
+CheckTools="Checking tools . . .\n"
+CleanUp="Cleaning up name of package to %s . . .\n"
+CreateDir="Creating %s (if necessary) . . .\n"
+DLBinary="Nothing suitable in cache\nDownloading package from %s (using --trust-server-names) . . .\n"
+DLBTryAgain="Trying again after determining package name . . .\n"
+DLInfo="Downloading info page from $InfoURL . . .\n"
+DLOptions="Options for wget: %s\n"
+DoItem="\055 %s %s\n"
+Extracted="Extracted version number: %s\n"
+ExtractTarball="Extracting tarball %s with support files . . .\n"
+FromCache="Retrieving package %s from cache . . .\n"
+FullPathName="Full path name of plugin: %s\n"
+InfoFailed='failed to download info page'
+InfoFound="Info page $InfoPage found\n"
+InfoTooOld="Info page $InfoPage too old - deleted\n"
+Installed='is installed'
+LibNotFound="Unable to locate library %s in /usr/lib or %s\n"
+Modified="- OK"
+MoveSettings="Moving/linking settings files . . .\n"
+MustBeRoot='must be root'
+NewInstall="New install directory: %s\n"
+NewVersion="\n\nThere may be a new version of this script available!
+See $ScriptURL\n\n"
+NoCDL='no cached-download file in cache'
+NoCommand='no command specified'
+NoFullInstall="Full reinstallation not required\n"
+NoFurther="Retrieved package for amd64 on i386 system - can go no further\n"
+NoInstall='unable to determine install directory'
+NoLocation='unable to determine package name (no Location)'
+NoPackage="Package %s not found in cache\n"
+NoPackageURL='unable to determine package URL'
+NoPlugin='unable to locate plugin'
+NoTarball="Tarball %s with support files not found - ignored\n"
+NotDpkg='not called by dpkg'
+NotFound='not found'
+NotInstalled='not installed'
+NotInThisOne="  not in this version\n"
+NotOurCurrent="Not removing alternative (%s) in different package\n"
+NoVersion='unable to determine version number'
+OldCurrent="Alternative (%s) in other version%s\n"
+Previous="Currently configured version: %s\n"
+RemoveCached="Removing cached files from sun-java6 package . . .\n"
+Removed=" - removed"
+RemoveInfo="Reset switch given - removing info page . . .\n"
+RemoveInstall="Removing runtime installation in %s . . .\n"
+RemoveItem="Removing %s . . .\n"
+RemoveOld="Removing previous installation %s . . .\n"
+RemovePkg="Removing downloaded package from /tmp . . .\n"
+RestoreFiles="Restoring modified files from cache if necessary . . .\n"
+Selected="Selected action: %s\n"
+SetBinFormat="Registering binary format for jar (%s) . . .\n"
+SetClassDS="Activating class data sharing (ignoring errors) . . .\n"
+SetODBCLinks="Creating symlinks to Open Database Connectivity drivers . . .\n"
+SetPlugin="Installing plugin . . .\n"
+SetTools="Installing tools . . .\n"
+Starting="Starting $ScriptName $ScriptVersion %s\n"
+Stopping="Stopping $ScriptName $ScriptVersion %s\n"
+SysArch="System architecture: %s bit\n"
+ToCache="Caching downloaded package as %s . . .\n"
+UnknownType='unknown file type'
+UnpackFailed='unpacking package failed'
+Unpacking="Unpacking package (will not show output on screen) . . .\n" 
+UnsetBinFormat="Deregistering binary format for jar (%s) . . .\n"
+UnsetClassDS="Deactivating class data sharing . . .\n"
+UnsetPlugin="Removing plugin . . .\n"
+UnsetTools="Removing tools . . .\n"
+UnsupArch='unsupported architecture (must be i386 or amd64)'
+UpdateDesktop="Updating desktop database . . .\n"
+UpdateJavaWS="Updating new installation's javaws link . . .\n"
+UpdateLibShare="Updating files in /usr/lib and /usr/share . . .\n"
+UpdateMenus="Updating menus . . .\n"
+UpdateMime="Updating mime database . . .\n"
+WrongName='package unpacked with unexpected directory name'
+WrongPackage="Wrong checksum for cached package %s\n"
+
+mkdir -m 0777 -p $TempDir
+
+# if necessary, try to locate the support tarball and put the script's own static data in tmp if possible
+[ -f $DataDir/version ] && DataVersion=$(cat $DataDir/version) || DataVersion=0
+if [ "$DataVersion" = "$ScriptVersion" ]; then
+	RewriteData=0
+else
+	[ -f $Tarball ] || Tarball=$(dirname $0)/$(basename $Tarball)
+	if [ -f $Tarball ]; then
+		Tarball=$(readlink -e $Tarball)
+		tar --extract --no-same-owner --no-overwrite-dir --directory $TempDir --file $Tarball usr/share/$ScriptName
+		TempData=$TempDir$DataDir
+		RewriteData=2
+	fi
+fi
+
+# try to load localized texts
+if [ -f $TempData/locale/${LANG%.*} ]; then
+	. $TempData/locale/${LANG%.*}
+elif [ -f $TempData/locale/${LANG%_*} ]; then
+	. $TempData/locale/${LANG%_*}
+fi
+
+# define some functions
+Report(){
+	[ $Verbose = 0 ] || printf "$@"
+}
+
+ReportCat(){
+	if [ -s $1 ]; then
+		[ $Verbose = 0 ] || cat $1
+	fi
+}
+
+FatalError(){
+	echo "$ScriptName: $1"
+	[ "$2" = "0" ] && exit 1
+	[ -n "$2" ] && { shift; Report "$@"; }
+	exit 1;
+}
+
+Modify(){
+	local SunFile OurFile
+	SunFile=$(echo $1 | sed 's/{{ITEM}}/'$SunPackage'/g')
+	OurFile=$(echo $1 | sed 's/\(.*\)-jre.xml/\1.xml/g')
+	OurFile=${OurFile%-bin}
+	OurFile=$(echo $OurFile | sed 's/{{ITEM}}/'$ScriptName'/g')
+	if [ -f $SunFile ]; then
+		Report "$DoItem" $SunFile "$Cached"
+		mv -f $SunFile $CacheDir/$(echo $SunFile | sed 's|/|_|g')
+	fi
+	Report "$DoItem" $OurFile "$Modified"
+	sed 's|{{INSTALL}}|'$InstallDir'|g' <$OurFile >tmpfile
+	mv -f tmpfile $OurFile
+}
+
+GetFromCache(){
+	local CachedFile SunFile OurFile
+	SunFile=$(echo $1 | sed 's/{{ITEM}}/'$SunPackage'/g')
+	OurFile=$(echo $1 | sed 's/\(.*\)-jre.xml/\1.xml/g')
+	OurFile=${OurFile%-bin}
+	OurFile=$(echo $OurFile | sed 's/{{ITEM}}/'$ScriptName'/g')
+	CachedFile=$CacheDir/$(echo $SunFile | sed 's|/|_|g')
+	if [ -f $CachedFile ]; then
+		Report "$DoItem" $SunFile
+		mv -f $CachedFile $SunFile
+	else
+		Report "$DoItem" $SunFile "$NotFound"
+	fi
+	Report "$DoItem" $OurFile "$Removed"
+	rm -fr $OurFile
+}
+
+RemoveCurrent(){
+	local Current
+	Current=$(update-alternatives --query $1 2>/dev/null | sed -n 's|^Value: \(.*\)$|\1|p')
+	if [ -z "$Current" ]; then
+		return
+	elif [ "${Current#$JavaDir/$Bit/}" = "$Current" ]; then
+		Report "$NotOurCurrent" $Current
+	else
+		if [ "${Current#$InstallDir/}" = "$Current" ]; then
+			Report "$OldCurrent" $Current "$Removed"
+			update-alternatives --quiet --remove $1 $Current
+		fi
+	fi
+}
+
+CheckVersion(){
+	local Version
+	Version=$(host -W 1 -t A $ScriptCode | sed -n 's/.* 10\.\(.*\)$/\1/p')
+	[ -z "$Version" ] || [ $Version = $ScriptVersion ] || echo "$NewVersion"
+}
+
+
+# validate options and rewrite and read command line arguments
+Action=0; Arch=0; Clean=0; Delete=0; Fast=0; FullInstall=0; Reset=0; Verbose=0
+Args=$(getopt -oacfhirv7 -lhelp -n$ScriptName -- "$@"); [ $? != 0 ] && exit 1
+eval set -- "$Args"
+while [ -n "$1" ]; do
+	case "$1" in
+	--)	;;
+	-a)	Arch=1;;
+	-c)	Clean=1;;
+	-f)	Fast=1;;
+	-i) FullInstall=1;;
+	-r)	Reset=1;;
+	-v)	Verbose=1;;
+	-h|--help)	CheckVersion; echo "$Syntax"; rm -fr $TempDir/usr; exit 1;;
+	install)		Action=1; break;;
+	configure)		Action=2; break;;
+	upgrade)		Action=3; break;;
+	remove)			Action=4; break;;
+	deconfigure)	Action=5; break;;
+	*)	FatalError "$BadArgument"
+	esac
+	shift
+done
+
+# read the second argument (empty or pathname to postinst or prerm)
+Dpkg=${2##*$ScriptName.}
+
+# check the IP address encoded version number for a possible new version
+[ -n "$Dpkg" ] || CheckVersion
+
+# exit if no action was specified
+[ $Action != 0 ] || FatalError "$NoCommand" 0
+
+# read the architecture from the -a option or dpkg
+Architecture=$(dpkg --print-architecture)
+if [ $Arch = 1 ]; then
+	[ "$Architecture" = "i386" ] && Architecture=amd64 || Architecture=i386
+fi
+if [ "$Architecture" = "i386" ]; then
+	Bit=32
+	GnuLib=/usr/lib/i386-linux-gnu
+elif [ "$Architecture" = "amd64" ]; then
+	Bit=64
+	GnuLib=/usr/lib/x86_64-linux-gnu
+else
+	FatalError "$UnsupArch" 0
+fi
+
+# use id instead of UID because sh is dash on Debian/Ubuntu and not bash
+[ $(id -u) -eq 0 ] || FatalError "$MustBeRoot" 0
+
+Report "$Starting" "$(date --rfc-3339=s)"
+Report "$Selected" $1
+
+case $Action in
+1|2)	# install (1) / configure (2 - if called by dpkg's postinst configure)
+
+	[ $Arch = 0 ] || Report "$AlienArch"
+
+	Report "$SysArch" $Bit
+
+	[ -z "$3" ] || Report "$Previous" $3
+
+	Report "$CreateDir" $CacheDir
+	mkdir -p $CacheDir
+
+	# install dependencies but only if called outside dpkg environment
+	if [ -z "$Dpkg" ]; then
+		Report "$CheckDepends"
+		for Item in $Depends; do
+			Status=$(dpkg-query -W -f='${Status}' $Item 2>/dev/null) || true
+			if [ "${Status%%installed*}" = "install ok " ]; then
+				Report "$DoItem" $Item "$Installed"
+			else
+				Report "$DoItem" $Item "$NotInstalled"
+				GetFiles="$GetFiles $Item"
+			fi
+		done
+		if [ -n "$GetFiles" ]; then
+			Report "$AptGetInstall"
+			apt-get -qy install $GetFiles 
+		fi
+	fi
+
+	# remove the old info page if the -r switch was set
+	if [ $Reset = 1 ]; then
+		Report "$RemoveInfo"
+		rm -f $InfoPage
+	fi
+
+	# wget's default is verbose, so use -q (quiet) if not verbose
+	[ $Verbose = 0 ] && WGetOptions='-nd -q' || WGetOptions="-nd -v --progress=dot:binary"
+
+	# fast means less retries and short timeouts (default is 20 and indefinite)
+	[ $Fast = 0 ] || WGetOptions="$WGetOptions -t 3 -T 15"
+
+	Report "$DLOptions" "$WGetOptions"
+
+	# retrieve the info page if necessary
+	if [ -f $InfoPage ] && [ $(($(date +%s) - $(date +%s -r $InfoPage))) -gt 43200 ]; then
+		Report "$InfoTooOld"
+		rm -f $InfoPage
+	fi
+	if [ -f $InfoPage ]; then
+		Report "$InfoFound"
+	else
+		Report "$DLInfo"
+		wget $WGetOptions -O $InfoPage $InfoURL || FatalError "$InfoFailed"
+	fi
+
+	# find the version number
+	MajorVersion=$(sed -n '/Recommended/ s/.*Version \(.*\) Update.*$/\1/p' <$InfoPage)
+	MinorVersion=$(($(sed -n '/Recommended/ s/.*Update \(.*\)<.*$/\1/p' <$InfoPage)))
+	[ -n "$MajorVersion" ] && [ -n "$MinorVersion" ] || FatalError "$NoVersion"
+	UpdateVersion=${MajorVersion}u$MinorVersion
+	Report "$Extracted" $UpdateVersion
+
+	[ $MinorVersion -gt 9 ] || MinorVersion=0$MinorVersion
+
+	# construct the name of the install directory
+	DirectoryVersion=$(echo ${MajorVersion}u$MinorVersion | sed -n 's/^\(.*\)u\(.*\)$/1.\1.0_\2/p')
+	[ -n "$DirectoryVersion" ] || FatalError "$NoInstall"
+	InstallDir=$JavaDir/$Bit/jre$DirectoryVersion
+	Report "$NewInstall" $InstallDir
+
+	# check whether we need to (re)install everything (last test is extra because of ODBC driver link bug in versions before 1.2.3)
+	if [ $FullInstall = 1 ] || [ "$3" = "$ScriptVersion" ] || [ ! -d "$InstallDir" ] || [ ! -e $InstallDir/lib/$Architecture/libodbc.so ]; then
+
+		# package URL depends on architecture
+		if [ $Bit = 32 ]; then
+			PackageURL=$(sed -n '/Linux" href="/ s/.*href="\(.*\)" .*$/\1/p;T;q' <$InfoPage)
+		else
+			PackageURL=$(sed -n '/Linux x64" / s/.*href="\(.*\)" .*$/\1/p;T;q' <$InfoPage)
+		fi
+
+		# exit now if not able to determine URL
+		[ -n "$PackageURL" ] || FatalError "$NoPackageURL"
+
+		# the bundle id is different for each version and package
+		BundleId=$(echo $PackageURL | sed -n 's/.*BundleId=\(.*\)$/\1/p')
+
+		# we should really only have one package in the TempDir...
+		rm -f $TempDir/jre*
+
+		# check the cache for a suitable file
+		Report "$CheckCache"
+		if [ -f $CacheDir/cached-download-$Bit ]; then
+			CachedBundleId=$(sed -n '3p' <$CacheDir/cached-download-$Bit)
+
+			# first compare bundle ids
+			Report "$CheckBundle" "$BundleId" "$CachedBundleId"
+			if [ "$BundleId" = "$CachedBundleId" ]; then
+				CachedPackage=$(sed -n '4p' <$CacheDir/cached-download-$Bit)
+
+				# make sure the package is actually there
+				if [ -f $CacheDir/$CachedPackage ]; then
+
+					# then compare the checksums
+					if [ "$(sum $CacheDir/$CachedPackage)" = "$(sed -n '5p' <$CacheDir/cached-download-$Bit)" ]; then
+						Report "$FromCache" $CachedPackage
+						cp -af $CacheDir/$CachedPackage $TempDir/$CachedPackage
+						PackageName=$TempDir/$CachedPackage
+					else
+						Report "$WrongPackage" $CachedPackage
+					fi
+				else
+					Report "$NoPackage" $CachedPackage
+				fi
+			fi
+		fi
+
+		# download if nothing suitable in cache
+		if [ -z "$PackageName" ]; then
+			Report "$DLBinary" $PackageURL
+
+			# first try to download the easy way
+			if wget $WGetOptions -P $TempDir --trust-server-names $PackageURL; then
+				# what is retrieved may have a query string tagged onto the name...
+				RawPackageName=$(ls $TempDir/jre*)
+				PackageName=${RawPackageName%%\?*}
+				if [ "$RawPackageName" != "$PackageName" ]; then
+					Report "$CleanUp" $PackageName
+					mv "$RawPackageName" $PackageName
+				fi
+			# second attempt if wget throws a fit because the name is too long
+			else
+				Report "$DLBTryAgain"
+				# get some data about the file
+				if Response=$(wget -S --spider $PackageURL 2>&1); then
+					# assume a redirect and extract the location header
+					Location=$(echo "$Response" | sed -n 's|.*Location: \(.*\)|\1|p')
+					if [ "$Location" ]; then
+						# extract the package name
+						PackageName=${Location%%\?*}
+						PackageName=${PackageName##*/}
+						# use the package name for wget's output
+						PackageName=$TempDir/$PackageName
+						wget $WGetOptions -O $PackageName $PackageURL || FatalError "$BinaryFailed"
+					else
+						FatalError "$NoLocation"
+					fi
+				else
+					FatalError "$BinaryFailed"
+				fi
+			fi
+		fi
+
+		# copy newly downloaded file to the cache
+		if [ "$BundleId" != "$CachedBundleId" ]; then
+			CachedPackage=$(basename $PackageName)
+			Report "$ToCache" $CacheDir/$CachedPackage
+			Sum=$(sum $PackageName)
+			cp -af $PackageName $CacheDir/$CachedPackage
+
+			# store an info file called cached-download-<bit> alongside it with six fields/lines:
+			# timestamp, version, bundle id, package name, checksums, install directory		
+			cat >$CacheDir/cached-download-$Bit <<-EOT
+			$(date --rfc-3339=s)
+			$UpdateVersion
+			$BundleId
+			$CachedPackage
+			$Sum
+			$InstallDir
+			EOT
+		fi
+
+		if [ $Arch = 1 ] && [ $Architecture = amd64 ]; then
+			Report "$NoFurther"
+			Report "$Stopping" "$(date --rfc-3339=s)"
+			exit
+		fi
+
+		Report "$CreateDir" $JavaDir/$Bit
+		mkdir -p $JavaDir/$Bit
+
+		Report "$Unpacking" 
+		cd $JavaDir/$Bit
+		rm -fr $InstallDir
+
+		# unpack the file - no output to screen
+		if [ "${PackageName#*.}" = "bin" ]; then
+			sh $PackageName >/dev/null || FatalError "$UnpackFailed"
+		elif [ "${PackageName#*.}" = "tar.gz" ]; then
+			tar --no-same-owner -xzf $PackageName || FatalError "$UnpackFailed"
+		else
+			FatalError "$UnknownType"
+		fi
+
+		[ -d "$InstallDir" ] || FatalError "$WrongName"
+
+		PluginFull=$InstallDir/lib/$Architecture/$PluginLeaf
+		Report "$FullPathName" $PluginFull
+		[ -f "$PluginFull" ] || FatalError "$NoPlugin"
+
+		# link the pixmap image but only if it doesn't exist as a regular file in /usr/share/pixmaps
+		if [ ! -f /usr/share/pixmaps/sun-java.png ] && [ -f $InstallDir/plugin/desktop/sun_java.png ] ; then
+			ln -fsT $InstallDir/plugin/desktop/sun_java.png /usr/share/pixmaps/sun-java.png
+		fi
+
+		# link in the locally installed Open Database Connectivity drivers, but only look
+		# for them in /usr/lib and its i386-linux-gnu / x86_64-linux-gnu subdirectory
+		Report "$SetODBCLinks"
+		if [ -e /usr/lib/libodbc.so.1 ]; then
+			TempName=/usr/lib/libodbc.so.1
+		elif [ -e $GnuLib/libodbc.so.1 ]; then
+			TempName=$GnuLib/libodbc.so.1
+		else
+			Report "$LibNotFound" libodbc.so.1 $GnuLib
+			TempName=''
+		fi
+		[ -z "$TempName" ] || ln -fsT $TempName $InstallDir/lib/$Architecture/libodbc.so || true
+		if [ -e /usr/lib/libodbcinst.so.1 ]; then
+			TempName=/usr/lib/libodbcinst.so.1
+		elif [ -e $GnuLib/libodbcinst.so.1 ]; then
+			TempName=$GnuLib/libodbcinst.so.1
+		else
+			Report "$LibNotFound" libodbcinst.so $GnuLib
+			TempName=''
+		fi
+		[ -z "$TempName" ] || ln -fsT $TempName $InstallDir/lib/$Architecture/libodbcinst.so || true
+
+		# build the binary format specification file
+		cat >$InstallDir/lib/jar.binfmt <<-EOT
+		package $ScriptName
+		interpreter $InstallDir/lib/jexec
+		magic PK\x03\x04
+		EOT
+
+		# modify the new javaws
+		Item=$InstallDir/bin/javaws
+		if [ ! -f $Item.real ]; then
+			Report "$UpdateJavaWS"
+			# replace javaws with small shell script that inserts -viewer before calling the real javaws
+			mv -f $Item $Item.real
+			cat >$Item <<-EOT
+			#!/bin/sh
+
+			prog="\$0"
+			while [ -h "\$prog" ]; do prog=\$(readlink -f \$prog); done
+			[ \$# -eq 0 ] && set -- -viewer
+			exec \$(dirname \$prog)/javaws.real "\$@"
+			EOT
+		fi
+
+		# move several settings files to /etc and link to them from the installation
+		Report "$MoveSettings"
+		[ ! -d $EtcDirOld ] || mv -f $EtcDirOld $EtcDir
+		mkdir -p $EtcDir
+		for Item in $Properties; do
+			Item=$Item.properties
+			Report "$DoItem" $Item
+			if [ ! -f $EtcDir/$Item ]; then
+				if [ -f $InstallDir/lib/$Item ]; then
+					mv -f $InstallDir/lib/$Item $EtcDir
+				elif [ -f $TempData/templates/$Item ]; then
+					cp -a $TempData/templates/$Item $EtcDir
+				fi
+			fi
+			ln -fsT $EtcDir/$Item $InstallDir/lib/$Item
+		done
+
+		Report "$DoItem" jvm.cfg
+		if [ ! -f $EtcDir/jvm.cfg ]; then
+			mv -f $InstallDir/lib/$Architecture/jvm.cfg $EtcDir
+		fi
+		ln -fsT $EtcDir/jvm.cfg $InstallDir/lib/$Architecture/jvm.cfg
+
+		mkdir -p $EtcDir/management
+		for MgmtItem in $(ls $InstallDir/lib/management/$MgmtItem); do
+			Item=${MgmtItem%%.template}
+			Report "$DoItem" $Item
+			if [ ! -f $EtcDir/management/$Item ]; then
+				mv -f $InstallDir/lib/management/$MgmtItem $EtcDir/management/$Item
+			fi
+			ln -fsT $EtcDir/management/$Item $InstallDir/lib/management/$Item
+		done
+
+		mkdir -p $EtcDir/security
+		for Item in $Security; do
+			Report "$DoItem" $Item
+			if [ ! -f $EtcDir/security/$Item ]; then
+				mv -f $InstallDir/lib/security/$Item $EtcDir/security
+			fi
+			ln -fsT $EtcDir/security/$Item $InstallDir/lib/security/$Item
+		done
+
+		mkdir -p /etc/.java
+		Report "$DoItem" .systemPrefs
+		[ -f /etc/.java/.system.lock ] || touch /etc/.java/.system.lock
+		[ -f /etc/.java/.systemRootModFile ] || touch /etc/.java/.systemRootModFile
+		ln -fsT /etc/.java/ $InstallDir/.systemPrefs
+
+		# up to this point, no changes to (possibly) existing installation
+
+		# deregister binary format if it belongs to the sun-java6 package - ignore errors
+		if type update-binfmts >/dev/null; then
+			if [ -r /usr/share/binfmts/jar ] && [ -n "$(sed -n '/'$SunPackage'/p'</usr/share/binfmts/jar)" ]; then
+				Report "$UnsetBinFormat" $SunPackage
+				update-binfmts --package $SunPackage --remove jar /usr/bin/jexec || true
+			fi
+			if [ -e /var/lib/binfmts/jar ] && [ -n "$(sed -n '/'$SunPackage'/p'</var/lib/binfmts/jar)" ]; then
+				Report "$UnsetBinFormat" "/var/lib/binfmts/$SunPackage"
+				update-binfmts --package $SunPackage --remove jar /usr/bin/jexec || true
+			fi
+		fi
+
+		# if not already going to read a fresh set of data files from the new support
+		# tarball, go get them from the old one, but only if installing manually
+		[ -n "$Dpkg" ] || [ $RewriteData = 2 ] || RewriteData=1
+
+		DoTools=$SetTools
+		DoPlugin=$SetPlugin
+
+	else
+
+		Report "$NoFullInstall"
+		PluginFull=$InstallDir/lib/$Architecture/$PluginLeaf
+		DoTools=$CheckTools
+		DoPlugin=$CheckPlugin
+
+	fi
+
+	# set executable bits on javaws wrapper (must be done here because previous versions of the script neglected to do this...)
+	chmod -f +x $InstallDir/bin/javaws
+
+	# make sure the structure in InstallDir has uid:gid 0:0
+	[ "$(stat -c %u:%g $InstallDir)" != "0:0" ] && chown -RP 0:0 $InstallDir
+
+	# fully extract the support tarball if necessary
+	if [ $RewriteData != 0 ]; then
+		if [ $RewriteData = 2 ] || [ ! -f $DataDir/support.tar.gz -a -f $Tarball ]; then
+			mkdir -p $DataDir
+			cp -af $Tarball $DataDir/support.tar.gz
+		else
+			Tarball=$DataDir/support.tar.gz
+		fi
+		if [ -f $Tarball ]; then
+			Report "$ExtractTarball" $Tarball
+			tar --extract --no-same-owner --no-overwrite-dir --directory / --file $Tarball
+		else
+			Report "$NoTarball" $Tarball
+		fi
+	fi
+
+	# modify files in /usr/lib and /usr/share if necessary
+	if [ -n "$Dpkg" ] || [ $RewriteData != 0 ]; then
+		Report "$UpdateLibShare"
+		for Item in $SupportItems; do
+			Modify $Item
+		done
+	fi
+
+	# check/install the alternatives for the Java tools
+	Report "$DoTools"
+	for Item in $JavaTools; do
+		Report "$DoItem" $Item
+		RemoveCurrent $Item
+		unset Slave || true
+		[ -e "$InstallDir/man/man1/$Item.1" ] && gzip -9 $InstallDir/man/man1/$Item.1
+		[ -e "$InstallDir/man/man1/$Item.1.gz" ] && Slave="--slave /usr/share/man/man1/$Item.1.gz $Item.1.gz $InstallDir/man/man1/$Item.1.gz"
+		if [ -e "$InstallDir/bin/$Item" ]; then
+			update-alternatives --quiet --install /usr/bin/$Item $Item $InstallDir/bin/$Item $Priority $Slave
+		else
+			Report "$NotInThisOne"
+		fi
+	done
+	Report "$DoItem" jexec
+	RemoveCurrent jexec
+	update-alternatives --quiet --install /usr/bin/jexec jexec $InstallDir/lib/jexec $Priority --slave /usr/share/binfmts/jar jexec-binfmt $InstallDir/lib/jar.binfmt
+
+	# register binary format to us - ignore errors
+	if type update-binfmts >/dev/null && [ -r /usr/share/binfmts/jar ]; then
+		Report "$SetBinFormat" $ScriptName
+		update-binfmts --package $ScriptName --import jar || true
+	fi
+
+	# check/install the alternatives for the plugin
+	Report "$DoPlugin"
+	for Item in $BrowserDirs; do
+		Report "$DoItem" $Item
+		if [ $Item = xulrunner-addons ]; then
+			Browser=xulrunner-1.9
+		else
+			Browser=$Item
+		fi
+		[ -d /usr/lib/$Item/plugins ] || mkdir -p /usr/lib/$Item/plugins
+		RemoveCurrent $Browser-javaplugin.so
+		update-alternatives --quiet --install /usr/lib/$Item/plugins/libjavaplugin.so $Browser-javaplugin.so $PluginFull $Priority
+	done
+
+	# activate class data sharing - ignore errors generating classes.jsa
+	Report "$SetClassDS"
+	rm -f $InstallDir/lib/$Architecture/client/classes.jsa
+	Errors=$(tempfile)
+	if ! $InstallDir/bin/java -client -Xshare:dump -Xmx256m -XX:PermSize=128m >$Errors; then
+		rm -f $InstallDir/lib/$Architecture/client/classes.jsa
+		ReportCat $Errors
+	fi
+	rm -f $Errors
+
+	# store version number if a new support set was stored
+	[ $RewriteData != 2 ] || echo $ScriptVersion >$DataDir/version
+
+	# remove any old installations from /opt/java
+	if [ $Clean = 1 ]; then
+		for Item in $(ls $JavaDir/$Bit); do
+			if [ -d $JavaDir/$Bit/$Item ] && [ "$Item" != "jre$DirectoryVersion" ]; then
+				Report "$RemoveOld" $Item
+				rm -fr $JavaDir/$Bit/$Item
+			fi
+		done
+	fi
+
+	# remove any old cached packages
+	for Item in $CacheDir/jre*; do
+		if [ "${Item%/jre-$UpdateVersion*}" != "$CacheDir" ]; then
+			Report "$RemoveItem" $Item
+			rm -f $Item
+		fi
+	done
+
+	# remove any cached files belonging to the sun-java6 packages if we're in a dpkg environment
+	if [ -n "$Dpkg" ] && ls $CacheDir/_usr_* >/dev/null 2>&1; then
+		Report "$RemoveCached"
+		rm -f $CacheDir/_usr_*
+	fi
+
+	# remove downloaded package and static data from /tmp
+	Report "$RemovePkg"
+	rm -f $PackageName
+	rm -fr $TempDir/usr
+
+	;;
+
+3|4|5)	#  upgrade (3) / remove (4) / deconfigure (5)
+
+	# manual remove is only allowed if the script package is not installed
+	[ "$(dpkg-query -W -f='${Status}' $ScriptName 2>/dev/null)" != "install ok installed" ] && Delete=1
+
+	[ "$Dpkg" = "prerm" ] || [ $Delete = 1 ] || FatalError "$NotDpkg" "$Stopping"
+
+	# get info from the cache
+	[ -f $CacheDir/cached-download-$Bit ] || FatalError "$NoCDL" "$Stopping"
+	InstallDir=$(sed -n '6p' <$CacheDir/cached-download-$Bit)
+	PluginFull=$InstallDir/lib/$Architecture/$PluginLeaf
+
+	[ $Action = 3 ] || Report "$RemoveInstall" $InstallDir
+
+	[ -d $InstallDir ] || FatalError "$NotInstalled" "$Stopping"
+
+	# remove the classes.jsa file
+	rm -f $InstallDir/lib/i386/client/classes.jsa
+
+	# if not upgrading the script, also unlink the alternatives and the binary format
+	if [ $Action != 3 ]; then
+
+		# unlink the plugin
+		Report "$UnsetPlugin"
+		for Item in $BrowserDirs; do
+			Report "$DoItem" $Item
+			if [ $Item = xulrunner-addons ]; then
+				Browser=xulrunner-1.9
+			else
+				Browser=$Item
+			fi
+			update-alternatives --quiet --remove $Browser-javaplugin.so $PluginFull
+		done
+
+		# deregister binary format - ignore errors
+		if type update-binfmts >/dev/null && [ -r /usr/share/binfmts/jar ]; then
+			Report "$UnsetBinFormat" $ScriptName
+			update-binfmts --package $ScriptName --remove jar /usr/bin/jexec || true
+		fi
+
+		# unlink the tools
+		Report "$UnsetTools"
+		for Item in $JavaTools; do
+			Report "$DoItem" $Item
+			IsAlt=$(update-alternatives --query $Item 2>/dev/null | sed -n 's|^Value: \(.*\)$|\1|p')
+			if [ -n "$IsAlt" ]; then
+				update-alternatives --quiet --remove $Item $InstallDir/bin/$Item
+			fi
+		done
+		Report "$DoItem" jexec
+		update-alternatives --quiet --remove jexec $InstallDir/lib/jexec
+
+		# this if from the sun-java6-bin package's prerm - I'm still not convinced
+		# looking for an item with the package name instead of the format makes sense...
+		if type update-binfmts >/dev/null; then
+			# try to remove and ignore any error
+			if [ -e /var/lib/binfmts/$SunPackage ]; then
+				Report "$UnsetBinFormat" "/var/lib/binfmts/$SunPackage"
+				update-binfmts --package $SunPackage --remove jar /usr/bin/jexec || true
+			fi
+		fi
+
+		# if there's still a jar link after ours has been removed, register the format if it points to the sun-java6 package
+		if type update-binfmts >/dev/null && [ -r /usr/share/binfmts/jar ] && [ -n "$(sed -n '/'$SunPackage'/p'</usr/share/binfmts/jar)" ]; then
+			Report "$SetBinFormat" $SunPackage
+			update-binfmts --package $SunPackage --import jar || true
+		fi
+
+		# if called outside dpkg environment
+		if [ -z "$Dpkg" ]; then
+
+			# restore files from the cache
+			Report "$RestoreFiles"
+			for Item in $SupportItems; do
+				GetFromCache $Item
+			done
+
+			# remove data directory
+			Report "$RemoveItem" $DataDir
+			rm -fr $DataDir
+		fi
+
+		# remove the link to the pixmap image
+		if [ -h /usr/share/pixmaps/sun-java6.png ] ; then
+			rm /usr/share/pixmaps/sun-java6.png
+		fi
+
+		# remove the installed runtime itself
+		Report "$RemoveItem" $InstallDir
+		rm -fr $InstallDir
+	fi
+
+	;;
+
+esac
+
+# update databases if not called by dpkg
+if [ -z "$Dpkg" ]; then
+	if type update-menus >/dev/null; then
+		Report "$UpdateMenus"
+		update-menus
+	fi
+	if type update-desktop-database >/dev/null; then
+		Report "$UpdateDesktop"
+		update-desktop-database
+	fi
+	if type update-mime >/dev/null; then
+		Report "$UpdateMime"
+		update-mime
+		update-mime-database /usr/share/mime
+	fi
+fi
+
+Report "$Stopping" "$(date --rfc-3339=s)"

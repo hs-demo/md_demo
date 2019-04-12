@@ -1,11 +1,13 @@
 //! moment.js locale configuration
+//! locale : malayalam (ml)
+//! author : Floyd Pink : https://github.com/floydpink
 
 ;(function (global, factory) {
    typeof exports === 'object' && typeof module !== 'undefined'
        && typeof require === 'function' ? factory(require('../moment')) :
-   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
+   typeof define === 'function' && define.amd ? define(['moment'], factory) :
    factory(global.moment)
-}(this, (function (moment) { 'use strict';
+}(this, function (moment) { 'use strict';
 
 
     var ml = moment.defineLocale('ml', {
@@ -35,7 +37,6 @@
             future : '%s കഴിഞ്ഞ്',
             past : '%s മുൻപ്',
             s : 'അൽപ നിമിഷങ്ങൾ',
-            ss : '%d സെക്കൻഡ്',
             m : 'ഒരു മിനിറ്റ്',
             mm : '%d മിനിറ്റ്',
             h : 'ഒരു മണിക്കൂർ',
@@ -77,4 +78,4 @@
 
     return ml;
 
-})));
+}));

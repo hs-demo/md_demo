@@ -1,11 +1,14 @@
 //! moment.js locale configuration
+//! locale : kyrgyz (ky)
+//! author : Chyngyz Arystan uulu : https://github.com/chyngyz
 
 ;(function (global, factory) {
    typeof exports === 'object' && typeof module !== 'undefined'
        && typeof require === 'function' ? factory(require('../moment')) :
-   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
+   typeof define === 'function' && define.amd ? define(['moment'], factory) :
    factory(global.moment)
-}(this, (function (moment) { 'use strict';
+}(this, function (moment) { 'use strict';
+
 
 
     var suffixes = {
@@ -49,15 +52,14 @@
             sameDay : '[Бүгүн саат] LT',
             nextDay : '[Эртең саат] LT',
             nextWeek : 'dddd [саат] LT',
-            lastDay : '[Кечээ саат] LT',
-            lastWeek : '[Өткөн аптанын] dddd [күнү] [саат] LT',
+            lastDay : '[Кече саат] LT',
+            lastWeek : '[Өткен аптанын] dddd [күнү] [саат] LT',
             sameElse : 'L'
         },
         relativeTime : {
             future : '%s ичинде',
             past : '%s мурун',
             s : 'бирнече секунд',
-            ss : '%d секунд',
             m : 'бир мүнөт',
             mm : '%d мүнөт',
             h : 'бир саат',
@@ -69,7 +71,7 @@
             y : 'бир жыл',
             yy : '%d жыл'
         },
-        dayOfMonthOrdinalParse: /\d{1,2}-(чи|чы|чү|чу)/,
+        ordinalParse: /\d{1,2}-(чи|чы|чү|чу)/,
         ordinal : function (number) {
             var a = number % 10,
                 b = number >= 100 ? 100 : null;
@@ -77,10 +79,10 @@
         },
         week : {
             dow : 1, // Monday is the first day of the week.
-            doy : 7  // The week that contains Jan 7th is the first week of the year.
+            doy : 7  // The week that contains Jan 1st is the first week of the year.
         }
     });
 
     return ky;
 
-})));
+}));

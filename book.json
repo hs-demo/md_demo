@@ -48,7 +48,7 @@
       "theme": "light"
     },
     "uml": {
-      "format": "svg",
+      "format": "png",
       "charset": "UTF-8",
       "nailgun": false
     },
@@ -83,16 +83,12 @@
     "versions": {
       "options": [
         {
-          "value": "https://hs-yonekura.github.io/denso/",
-          "text": "PWH Handler"
+          "value": "https://hs-demo.github.io/md_demo/",
+          "text": "Sample1"
         },
         {
-          "value": "https://hs-yonekura.github.io/denso/sample1.html",
-          "text": "評価用サンプル１"
-        },
-        {
-          "value": "https://hs-yonekura.github.io/denso/sample2.html",
-          "text": "評価用サンプル２"
+          "value": "https://hs-demo.github.io/md_demo/sample2.html",
+          "text": "Sample2"
         }
       ]
     },
@@ -119,13 +115,13 @@
       "cssClasses": "line-numbers",
       "ignore" : ["mermaid", "flow", "puml"]
     },
-		"include-codeblock": {
-			"template": "ace",
-			"unindent": true,
-			"theme": "monokai"
-		},
+	"include-codeblock": {
+		"template": "ace",
+		"unindent": true,
+		"theme": "monokai"
+	},
     "get-pdf-link": {
-      "base": "https://hs-yonekura.github.io/denso/pdf/book.pdf",
+      "base": "https://hs-demo.github.io/md_demo/book.pdf",
       "label": "PDFダウンロード",
       "multilingual": false
     }

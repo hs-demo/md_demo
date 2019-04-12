@@ -1,11 +1,13 @@
 //! moment.js locale configuration
+//! locale : swedish (sv)
+//! author : Jens Alm : https://github.com/ulmus
 
 ;(function (global, factory) {
    typeof exports === 'object' && typeof module !== 'undefined'
        && typeof require === 'function' ? factory(require('../moment')) :
-   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
+   typeof define === 'function' && define.amd ? define(['moment'], factory) :
    factory(global.moment)
-}(this, (function (moment) { 'use strict';
+}(this, function (moment) { 'use strict';
 
 
     var sv = moment.defineLocale('sv', {
@@ -36,7 +38,6 @@
             future : 'om %s',
             past : 'för %s sedan',
             s : 'några sekunder',
-            ss : '%d sekunder',
             m : 'en minut',
             mm : '%d minuter',
             h : 'en timme',
@@ -48,7 +49,7 @@
             y : 'ett år',
             yy : '%d år'
         },
-        dayOfMonthOrdinalParse: /\d{1,2}(e|a)/,
+        ordinalParse: /\d{1,2}(e|a)/,
         ordinal : function (number) {
             var b = number % 10,
                 output = (~~(number % 100 / 10) === 1) ? 'e' :
@@ -65,4 +66,4 @@
 
     return sv;
 
-})));
+}));
