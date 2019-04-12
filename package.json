@@ -82,6 +82,10 @@
     "sockjs": "^0.3.19",
     "sockjs-client": "1.1.4"
   },
+  "bundledDependencies": false,
+  "scripts": {
+    "gitbook": "gitbook"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hs-demo/md_demo.git"
